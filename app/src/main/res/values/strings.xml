@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">MobileBycle</string>
+    <string name="hint_input_imei">请输入15位IMEI号</string>
+    <string name="server">服务器:</string>
+    <string name="connect">连接</string>
+    <string name="disconnect">断开</string>
+    <string name="unlock">开锁</string>
+    <string name="find">找车</string>
+    <string name="change_server">更改服务器</string>
+    <string name="change_gps_echo_time_gap">更改GPS回报时间间隔</string>
+    <string name="change_heart_beat_time_gap">更改心跳间隔时间</string>
+    <string name="change_gps_pre_time">更改GPS预开启时间</string>
+    <string name="reset_device">重启设备</string>
+    <string name="location">定位</string>
+    <string name="default_imei">861234566543214</string>
+    <string name="no_connect_to_server">没有连接到服务器，或连接已经断开</string>
+    <string name="settings">设置</string>
+    <string name="hint_input_ip">输入IP地址</string>
+    <string name="hint_input_port">输入端口号</string>
+    <string name="hint_input_echo_gap_lock">输入上锁状态时GPS回报时间间隔</string>
+    <string name="hint_input_echo_gap_run">输入开锁状态时GPS回报时间间隔</string>
+    <string name="hint_input_gps_pretime">输入GPS预启动时间</string>
+    <string name="hint_input_heart_beat_gap">输入心跳时间间隔</string>
+    <string name="save">保存</string>
+    <string name="hint_input_tyre_perimeter">输入轮胎周长</string>
+    <string name="change_tyre_perimeter">更改轮胎周长</string>
+</resources>
