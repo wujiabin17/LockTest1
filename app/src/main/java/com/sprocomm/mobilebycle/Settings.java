@@ -11,8 +11,7 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 
-import com.baidu.location.LocationClient;
-import com.baidu.mapapi.SDKInitializer;
+
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,13 +51,10 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        SDKInitializer.initialize(getApplicationContext());
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.settings_layout);
         initView();
 
-        SharedPreferences mSharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
-        mEditor = mSharedPreferences.edit();
     }
 
     private void initView(){

@@ -173,10 +173,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <com.baidu.mapapi.map.MapView
-            android:id="@+id/bmapView"
+        <com.amap.api.maps.MapView
+            android:id="@+id/map"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
             android:clickable="true" />
+        <Button
+            android:id = "@+id/scan"
+            android:layout_alignBottom="@id/map"
+            android:layout_centerHorizontal="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="15dp"
+            android:text="扫码开锁"/>
     </RelativeLayout>
 </LinearLayout>

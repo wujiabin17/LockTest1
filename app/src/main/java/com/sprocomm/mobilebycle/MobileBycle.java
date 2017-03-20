@@ -16,26 +16,15 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.baidu.location.BDLocation;
-import com.baidu.location.BDLocationListener;
-import com.baidu.location.LocationClient;
-import com.baidu.location.LocationClientOption;
-import com.baidu.location.LocationClientOption.LocationMode;
-import com.baidu.location.Poi;
-import com.baidu.mapapi.SDKInitializer;
-import com.baidu.mapapi.map.BaiduMap;
-import com.baidu.mapapi.map.BaiduMap.OnMarkerClickListener;
-import com.baidu.mapapi.map.BaiduMap.OnMarkerDragListener;
-import com.baidu.mapapi.map.BitmapDescriptor;
-import com.baidu.mapapi.map.BitmapDescriptorFactory;
-import com.baidu.mapapi.map.InfoWindow;
-import com.baidu.mapapi.map.MapStatusUpdate;
-import com.baidu.mapapi.map.MapStatusUpdateFactory;
-import com.baidu.mapapi.map.MapView;
-import com.baidu.mapapi.map.Marker;
-import com.baidu.mapapi.map.MarkerOptions;
-import com.baidu.mapapi.map.OverlayOptions;
-import com.baidu.mapapi.model.LatLng;
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
+import com.amap.api.maps.AMap;
+import com.amap.api.maps.CameraUpdateFactory;
+import com.amap.api.maps.LocationSource;
+import com.amap.api.maps.MapView;
+import com.amap.api.maps.model.MarkerOptions;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,16 +32,20 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 
-public class MobileBycle extends Activity implements OnClickListener, OnMarkerClickListener, OnMarkerDragListener{
+public class MobileBycle extends Activity implements OnClickListener, LocationSource, AMapLocationListener {
 
     private static final int BUTTON_STATE = 1;
     private static final int RECEIVE_FROM_SERVER = 3;
     private static final int STATE_CONNECTED = 1;
     private static final int STATE_CONNECTING = 2;
     private static final int STATE_DISCONNECTED = 3;
+    private static final int RESULT_FROM_CAPTURE_ACTIVITY = 1;
+    private static final String RETURN_BYCLE_ID = "return_bycle_id";
     private Button unLock;
     private Button findBike;
     private Button modifyServer;
@@ -61,6 +54,7 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
     private Button modifyGpsPreTime;
     private Button rebootDevice;
     private Button mSettingsButton;
+    private Button  btScan;
     private Button modifyTyrePerimeter;
     private TextView imei;
     private EditText inputImei;
@@ -69,6 +63,16 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
     private double mLatitude;
     private Button disconnect;
     private Socket mSocket = null;
+    private MapView mMapView;
+    private AMap aMap;
+    private Toast mToast;
+    //声明AMapLocationClient类对象
+    public AMapLocationClient mLocationClient;
+    //声明AMapLocationClientOption对象
+    public AMapLocationClientOption mLocationOption;
+    private LocationSource.OnLocationChangedListener mListener;
+    private AMapLocation mMapLocation;
+
 
     private Handler mHandler = new Handler(){
         public void handleMessage(android.os.Message msg) {
@@ -80,7 +84,7 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
                     final String mess = (String) msg.obj;
                     serverText.setText(mess);
                     if(mess.startsWith("**,101")) {
-                        addMarker(getLatLng(mess));
+
                     }
                     break;
             }
@@ -89,33 +93,20 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
     };
 
     private TextView serverText;
-    private MapView mMapView;
-    public LocationClient mLocationClient = null;
-    public BDLocationListener myListener = new MyLocationListener();
-    private BaiduMap mBaiduMap;
     private String[] titles = new String[] { "one", "two", "three", "four" };
-    private LatLng[] latlngs = new LatLng[] {new LatLng(mLatitude,mLontitude), new LatLng(31.213945,121.635361),
-            new LatLng(31.213977,121.635361), new LatLng(31.213944,121.635366) };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        SDKInitializer.initialize(getApplicationContext());
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.mobile_bycle_layout);
         initView();
-        mLocationClient = new LocationClient(getApplicationContext());
-        //声明LocationClient类
-        mLocationClient.registerLocationListener( myListener );
-        //注册监听函数
-//		initMarker();
+        mMapView.onCreate(savedInstanceState);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        mLocationClient.start();
-        initLocation();
     }
 
     @Override
@@ -123,53 +114,32 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
         super.onResume();
         mMapView.onResume();
     }
+
     @Override
     protected void onPause() {
         super.onPause();
         mMapView.onPause();
     }
     @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        //在activity执行onSaveInstanceState时执行mMapView.onSaveInstanceState (outState)，保存地图当前的状态
+        mMapView.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onStop() {
+        // TODO Auto-generated method stub
+        super.onStop();
+        mLocationClient.stopLocation();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         mMapView.onDestroy();
+        mLocationClient.onDestroy();
     }
-
-    /*  "**,101,432423423,31.24254,160.43432&&" */
-    private LatLng getLatLng(String msg) {
-        int i = msg.lastIndexOf(',');
-        int j = msg.lastIndexOf('&');
-        double lat = Double.parseDouble(msg.substring(i+1,j-1));
-
-        final String tmp = msg.substring(0, i-1);
-        j = tmp.lastIndexOf(',');
-        double lon = Double.parseDouble(msg.substring(j+1,i-1));
-
-        return new LatLng(lat, lon);
-    }
-
-    private void addMarker(LatLng latLng) {
-        // 设置地图类型 MAP_TYPE_NORMAL 普通图； MAP_TYPE_SATELLITE 卫星图
-        mBaiduMap.setMapType(BaiduMap. MAP_TYPE_NORMAL);
-        // 开启交通图
-        mBaiduMap.setTrafficEnabled( true);
-        // 设置地图当前级别
-        MapStatusUpdate statusUpdate = MapStatusUpdateFactory.zoomTo(19);
-        mBaiduMap.setMapStatus(statusUpdate);
-        //覆盖物显示的图标
-        BitmapDescriptor descriptor = BitmapDescriptorFactory.fromResource(R.drawable.icon_openmap_focuse_mark);
-        OverlayOptions option = new MarkerOptions().position(latLng).icon(descriptor).draggable(true);
-        // 清除地图上所有的覆盖物
-        mBaiduMap.clear();
-        // 将覆盖物添加到地图上
-        mBaiduMap.addOverlay(option);
-        // 将覆盖物设置为地图中心
-        MapStatusUpdate u = MapStatusUpdateFactory.newLatLng(latLng);
-        // 以动画方式更新地图状态，动画耗时 300 ms
-        mBaiduMap.animateMapStatus(u);
-        mBaiduMap.setOnMarkerClickListener(this);
-        mBaiduMap.setOnMarkerDragListener(this);
-    }
-
 
     private void initView(){
         inputImei = (EditText)findViewById(R.id.put_imei);
@@ -186,9 +156,9 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
         rebootDevice = (Button) findViewById(R.id.reboot_device);
         mSettingsButton = (Button) findViewById(R.id.settings);
         modifyTyrePerimeter= (Button) findViewById(R.id.modify_tyre_perimeter);
-        mMapView = (MapView) findViewById(R.id.bmapView);
         Button btGetLocation = (Button) findViewById(R.id.get_location);
-        mBaiduMap = mMapView.getMap();
+        mMapView = (MapView) findViewById(R.id.map);
+        btScan = (Button)findViewById(R.id.scan);
         imei.setText(R.string.default_imei);
         imei.setTextSize(20);
         connect.setOnClickListener(this);
@@ -204,6 +174,17 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
         rebootDevice.setOnClickListener(this);
         mSettingsButton.setOnClickListener(this);
         modifyTyrePerimeter.setOnClickListener(this);
+        btScan.setOnClickListener(this);
+        //初始化地图控制器对象
+        aMap = mMapView.getMap();
+        aMap.setMapType(AMap.MAP_TYPE_NORMAL);
+        // 设置定位监听
+        aMap.setLocationSource(this);
+        // 设置为true表示显示定位层并可触发定位，false表示隐藏定位层并不可触发定位，默认是false
+        aMap.setMyLocationEnabled(true);
+        // 设置定位的类型为定位模式，有定位、跟随或地图根据面向方向旋转几种
+        aMap.setMyLocationType(AMap.LOCATION_TYPE_LOCATE);
+        mToast = Toast.makeText(this,"", Toast.LENGTH_SHORT);
     }
 
     public void buttonState(int state){
@@ -388,239 +369,106 @@ public class MobileBycle extends Activity implements OnClickListener, OnMarkerCl
                 send("##"+ imei.getText() + ",900&&");
                 break;
             case R.id.get_location:
-                if(mLontitude == 0 && mLatitude == 0){
-                    Toast.makeText(MobileBycle.this, "定位失败", Toast.LENGTH_SHORT).show();
+                if(mMapLocation != null && mListener !=null){
+                    mListener.onLocationChanged(mMapLocation);
+                    aMap.animateCamera(CameraUpdateFactory.zoomTo(17));
                 }else{
-                    setMarker(new LatLng(mLatitude,mLontitude));
+                    showTip("定位失败");
                 }
                 Log.d("wjb ---","-mLatitude:" + mLatitude +" mLontitude:" + mLontitude);
                 break;
             case R.id.settings:
                 startActivity(new Intent(this, Settings.class));
                 break;
+            case R.id.scan:
+                startActivityForResult(new Intent(this,CaptureActivity.class),RESULT_FROM_CAPTURE_ACTIVITY);
+                break;
             default:
                 break;
         }
+    }
+    private void showTip(final String str) {
+        mToast.setText(str);
+        mToast.show();
     }
 
     private void showErrorConnectToast(){
         Toast.makeText(this, R.string.no_connect_to_server,Toast.LENGTH_SHORT).show();
     }
-    private void initLocation(){
-        LocationClientOption option = new LocationClientOption();
-        option.setLocationMode(LocationMode.Hight_Accuracy);
-        //可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
 
-        option.setOpenGps(true);
-        option.setAddrType("all");// 返回的定位结果包含地址信息
-        option.setCoorType("bd09ll");// 返回的定位结果是百度经纬度,默认值gcj02
-
-        option.setScanSpan(5000);// 设置发起定位请求的间隔时间为5000ms
-        //可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
-        option.setIsNeedAddress(true);
-        //可选，设置是否需要地址信息，默认不需要
-        option.setOpenGps(true);
-        //可选，默认false,设置是否使用gps
-        mLocationClient.setLocOption(option);
+    @Override
+    public void activate(OnLocationChangedListener listener) {
+        mListener = listener;
+        if (mLocationClient == null) {
+            //初始化定位
+            mLocationClient = new AMapLocationClient(this);
+            //初始化定位参数
+            mLocationOption = new AMapLocationClientOption();
+            //设置定位回调监听
+            mLocationClient.setLocationListener(this);
+            //设置为高精度定位模式
+            mLocationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
+            mLocationOption.setInterval(2000);
+            //设置定位参数
+            mLocationClient.setLocationOption(mLocationOption);
+            // 此方法为每隔固定时间会发起一次定位请求，为了减少电量消耗或网络流量消耗，
+            // 注意设置合适的定位时间的间隔（最小间隔支持为2000ms），并且在合适时间调用stopLocation()方法来取消定位请求
+            // 在定位结束后，在合适的生命周期调用onDestroy()方法
+            // 在单次定位情况下，定位无论成功与否，都无需调用stopLocation()方法移除请求，定位sdk内部会移除
+            mLocationClient.startLocation();//启动定位
+        }
     }
 
-    public class MyLocationListener implements BDLocationListener {
+    @Override
+    public void deactivate() {
+        mListener = null;
+        if (mLocationClient != null) {
+            mLocationClient.stopLocation();
+            mLocationClient.onDestroy();
+        }
+        mLocationClient = null;
+    }
 
-        @Override
-        public void onReceiveLocation(BDLocation location) {
-
-            //获取定位结果
-            StringBuilder sb = new StringBuilder(256);
-
-            sb.append("time : ");
-            sb.append(location.getTime());    //获取定位时间
-
-            sb.append("\nerror code : ");
-            sb.append(location.getLocType());    //获取类型类型
-
-            sb.append("\nlatitude : ");
-            sb.append(location.getLatitude());    //获取纬度信息
-
-            sb.append("\nlontitude : ");
-            sb.append(location.getLongitude());    //获取经度信息
-
-            sb.append("\nradius : ");
-            sb.append(location.getRadius());    //获取定位精准度
-            mLontitude = location.getLongitude();
-            mLatitude = location.getLatitude();
-            setMarker(new LatLng(mLatitude,mLontitude));
-            if (location.getLocType() == BDLocation.TypeGpsLocation){
-
-                // GPS定位结果
-                sb.append("\nspeed : ");
-                sb.append(location.getSpeed());    // 单位：公里每小时
-
-                sb.append("\nsatellite : ");
-                sb.append(location.getSatelliteNumber());    //获取卫星数
-
-                sb.append("\nheight : ");
-                sb.append(location.getAltitude());    //获取海拔高度信息，单位米
-
-                sb.append("\ndirection : ");
-                sb.append(location.getDirection());    //获取方向信息，单位度
-
-                sb.append("\naddr : ");
-                sb.append(location.getAddrStr());    //获取地址信息
-
-                sb.append("\ndescribe : ");
-                sb.append("gps定位成功");
-
-            } else if (location.getLocType() == BDLocation.TypeNetWorkLocation){
-
-                // 网络定位结果
-                sb.append("\naddr : ");
-                sb.append(location.getAddrStr());    //获取地址信息
-
-                sb.append("\noperationers : ");
-                sb.append(location.getOperators());    //获取运营商信息
-
-                sb.append("\ndescribe : ");
-                sb.append("网络定位成功");
-
-            } else if (location.getLocType() == BDLocation.TypeOffLineLocation) {
-
-                // 离线定位结果
-                sb.append("\ndescribe : ");
-                sb.append("离线定位成功，离线定位结果也是有效的");
-
-            } else if (location.getLocType() == BDLocation.TypeServerError) {
-
-                sb.append("\ndescribe : ");
-                sb.append("服务端网络定位失败，可以反馈IMEI号和大体定位时间到loc-bugs@baidu.com，会有人追查原因");
-
-            } else if (location.getLocType() == BDLocation.TypeNetWorkException) {
-
-                sb.append("\ndescribe : ");
-                sb.append("网络不同导致定位失败，请检查网络是否通畅");
-
-            } else if (location.getLocType() == BDLocation.TypeCriteriaException) {
-
-                sb.append("\ndescribe : ");
-                sb.append("无法获取有效定位依据导致定位失败，一般是由于手机的原因，处于飞行模式下一般会造成这种结果，可以试着重启手机");
-
+    @Override
+    public void onLocationChanged(AMapLocation amapLocation) {
+// TODO Auto-generated method stub
+        if (amapLocation != null) {
+            if (amapLocation.getErrorCode() == 0) {
+                mListener.onLocationChanged(amapLocation);
+                mMapLocation = amapLocation;
+                //定位成功回调信息，设置相关消息
+                amapLocation.getLocationType();//获取当前定位结果来源，如网络定位结果，详见定位类型表
+                amapLocation.getLatitude();//获取纬度
+                amapLocation.getLongitude();//获取经度
+                amapLocation.getAccuracy();//获取精度信息
+                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                Date date = new Date(amapLocation.getTime());
+                df.format(date);//定位时间
+                Log.d("wjb sprocomm","amapLocation:" + amapLocation);
+            }else {
+                //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
+                Log.e("AmapError","location Error, ErrCode:"
+                        + amapLocation.getErrorCode() + ", errInfo:"
+                        + amapLocation.getErrorInfo());
             }
+        }
+    }
 
-            sb.append("\nlocationdescribe : ");
-            sb.append(location.getLocationDescribe());    //位置语义化信息
-
-            List<Poi> list = location.getPoiList();    // POI数据
-            if (list != null) {
-                sb.append("\npoilist size = : ");
-                sb.append(list.size());
-                for (Poi p : list) {
-                    sb.append("\npoi= : ");
-                    sb.append(p.getId() + " " + p.getName() + " " + p.getRank());
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        switch(requestCode){
+            case RESULT_FROM_CAPTURE_ACTIVITY:
+                if(data ==null){
+                    return;
                 }
-            }
-
-            Log.i("BaiduLocationApiDem", sb.toString());
+                String returnBycleId = data.getStringExtra(RETURN_BYCLE_ID);
+                if(returnBycleId !=null) {
+                    imei.setText(returnBycleId);
+                    if(returnBycleId.length() == 15){
+                        send("##"+ imei.getText() + ",202&&");
+                    }
+                }
         }
-
-        @Override
-        public void onConnectHotSpotMessage(String arg0, int arg1) {
-
-        }
-    }
-    private void setMarker(LatLng latLng){
-        mBaiduMap.clear();
-        OverlayOptions overlayOptions = null;
-        mBaiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
-        mBaiduMap.setTrafficEnabled( true);
-        MapStatusUpdate statusUpdate = MapStatusUpdateFactory.zoomTo(17);
-        mBaiduMap.setMapStatus(statusUpdate);
-        BitmapDescriptor descriptor = BitmapDescriptorFactory.fromResource(R.drawable.icon_openmap_mark);
-        overlayOptions = new MarkerOptions().position(latLng).icon(descriptor);
-        Marker marker=(Marker) mBaiduMap.addOverlay(overlayOptions);
-        Bundle bundle = new Bundle();
-        bundle.putString( "info", titles[0]+ "个");
-        marker.setExtraInfo(bundle);
-        // 将覆盖物添加到地图上
-        MapStatusUpdate u = MapStatusUpdateFactory.newLatLng(latLng);
-        mBaiduMap.setMapStatus(u);
-        mBaiduMap.setOnMarkerClickListener(this);
-    }
-
-    private void initMarker() {
-        mBaiduMap.clear();
-        LatLng latLng = null;
-        OverlayOptions overlayOptions = null;
-        // 设置地图类型 MAP_TYPE_NORMAL 普通图； MAP_TYPE_SATELLITE 卫星图
-        mBaiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
-        // 开启交通图
-        mBaiduMap.setTrafficEnabled( true);
-        MapStatusUpdate statusUpdate = MapStatusUpdateFactory.zoomTo(17);
-        mBaiduMap.setMapStatus(statusUpdate);
-        BitmapDescriptor descriptor = BitmapDescriptorFactory.fromResource(R.drawable.icon_openmap_mark);
-        //循环添加四个覆盖物到地图上
-        for ( int i = 0; i < titles. length; i++) {
-            latLng= latlngs[i];
-            overlayOptions = new MarkerOptions().position(latLng).icon(descriptor);
-            // 将覆盖物添加到地图上
-            Marker marker=(Marker) mBaiduMap.addOverlay(overlayOptions);
-            Bundle bundle = new Bundle();
-            bundle.putString( "info", titles[i]+ "个");
-            marker.setExtraInfo(bundle);
-        }
-        // 将最后一个坐标设置为地图中心
-        MapStatusUpdate u = MapStatusUpdateFactory.newLatLng(latLng);
-        mBaiduMap.setMapStatus(u);
-        //设置地图覆盖物的点击事件
-        mBaiduMap.setOnMarkerClickListener(this);
-
-    }
-
-    /**
-     * @Title: onMarkerClick
-     * @Description: 覆盖物点击事件,每次点击一个覆盖物则会在相应的覆盖物上显示一个InfoWindow
-     * @param marker
-     * @return
-     */
-    @Override
-    public boolean onMarkerClick(Marker marker) {
-        final String msg = marker.getExtraInfo().getString( "info");
-        InfoWindow mInfoWindow;
-        // 生成一个TextView用户在地图中显示InfoWindow
-        TextView location = new TextView(getApplicationContext());
-        location.setBackgroundResource(R.drawable.icon_openmap_focuse_mark);
-        location.setPadding(30, 20, 30, 20);
-        location.setText(msg);
-        //构建弹框所在的经纬度，
-        final LatLng ll = marker.getPosition();
-        Point p = mBaiduMap.getProjection().toScreenLocation(ll);
-        p. y -= 47; //让弹框在Y轴偏移47
-        LatLng llInfo = mBaiduMap.getProjection().fromScreenLocation(p);
-        //根据上面配置好的参数信息，构造一个InfoWindow。
-        mInfoWindow = new InfoWindow(location, llInfo, -47);
-        //构建好之后，然后调用show的方法，让弹框显示出来
-        mBaiduMap.showInfoWindow(mInfoWindow);
-        //弹框点击事件-
-        location.setOnClickListener( new OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(MobileBycle.this, msg, Toast.LENGTH_SHORT).show();
-            }
-        });
-        return true;
-    }
-
-    @Override
-    public void onMarkerDrag(Marker arg0) {
-
-    }
-
-    @Override
-    public void onMarkerDragEnd(Marker arg0) {
-
-    }
-
-    @Override
-    public void onMarkerDragStart(Marker arg0) {
-
     }
 }
