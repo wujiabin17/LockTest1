@@ -486,9 +486,12 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 }
                 String returnBycleId = data.getStringExtra(RETURN_BYCLE_ID);
                 if(returnBycleId !=null) {
-                    imei.setText(returnBycleId);
                     if(returnBycleId.length() == 15){
+                        imei.setText(returnBycleId);
                         send("##"+ imei.getText() + ",202&&");
+                        showTip("");
+                    }else{
+                        showTip("验证码错误,请重新扫码");
                     }
                 }
         }
