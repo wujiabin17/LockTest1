@@ -28,6 +28,7 @@ import com.sprocomm.decode.BeepManager;
 import com.sprocomm.decode.CaptureActivityHandler;
 import com.sprocomm.decode.InactivityTimer;
 import com.sprocomm.libs.Config;
+import com.sprocomm.permissions.RequestPermissionsActivity;
 import com.sprocomm.result.ResultHandler;
 import com.sprocomm.result.ResultHandlerFactory;
 import com.sprocomm.view.ViewfinderView;

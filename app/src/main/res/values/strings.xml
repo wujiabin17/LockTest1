@@ -29,7 +29,7 @@
 
     <string name="camera_open_notice">您已经开启了灯光！</string>
     <string name="camera_close_notice">您已经关闭了灯光！</string>
-    <string name ="open_light">打开手电筒</string>
+    <string name="open_light">打开手电筒</string>
 
     <string name="camera_problem">抱歉，您相机出现问题。您可能需要重启设备。</string>
     <string name="framwork_problem">二维码扫描暂时出现问题。您重启再试。</string>
@@ -47,4 +47,8 @@
     <string name="qrcode_empty"></string>
     <string name="qrcode_open">用浏览器打开</string>
     <string name="paramete_error">参数正确，请重新扫描</string>
+    <!--sprocomm_wjb add for permission-->
+    <string name="missing_required_permission">You have disabled a required permission.</string>
+    <string name="permission_change">Since the permissions change, please re-select the file.</string>
+    <string name="permission_change_redo">Since the permissions change, please redo.</string>
 </resources>

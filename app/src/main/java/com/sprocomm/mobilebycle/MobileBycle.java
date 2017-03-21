@@ -28,6 +28,7 @@ import com.amap.api.maps.model.BitmapDescriptorFactory;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
+import com.sprocomm.permissions.RequestPermissionsActivity;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -119,6 +120,9 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     @Override
     protected void onResume() {
         super.onResume();
+        if (RequestPermissionsActivity.startPermissionActivity(this)) {
+            return;
+        }
         mMapView.onResume();
     }
 
@@ -151,7 +155,6 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
      * 在地图上添加marker
      */
     private void addMarkersToMap() {
-
         markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
                 .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
                 .position(matLng)
