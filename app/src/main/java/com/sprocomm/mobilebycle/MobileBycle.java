@@ -77,6 +77,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private AMapLocation mMapLocation;
     private MarkerOptions markerOption;
     private Marker marker;
+    private LatLng matLng = new LatLng(31.208158,121.628941);
 
 
     private Handler mHandler = new Handler(){
@@ -149,11 +150,12 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     /**
      * 在地图上添加marker
      */
-    private void addMarkersToMap(LatLng latLng) {
+    private void addMarkersToMap() {
 
         markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
-                .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-                .position(latLng)
+                .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
+                .position(matLng)
+                .visible(true)
                 .draggable(true);
         marker = aMap.addMarker(markerOption);
         marker.showInfoWindow();
@@ -389,10 +391,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
             case R.id.get_location:
                 if(mMapLocation != null && mListener !=null){
                     mListener.onLocationChanged(mMapLocation);
-                    LatLng matLng[] = {new LatLng(288.55737,302.57974)};
-                    addMarkersToMap(matLng[0]);
-                    aMap.animateCamera(CameraUpdateFactory.zoomTo(17));
-                    aMap.clear();
+                    aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mMapLocation.getLatitude(),mMapLocation.getLongitude()),17));
+                    addMarkersToMap();
                 }else{
                     showTip("定位失败");
                 }
