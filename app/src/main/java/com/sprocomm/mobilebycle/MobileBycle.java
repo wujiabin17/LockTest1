@@ -24,6 +24,9 @@ import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
+import com.amap.api.maps.model.BitmapDescriptorFactory;
+import com.amap.api.maps.model.LatLng;
+import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
 
 import java.io.IOException;
@@ -72,6 +75,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     public AMapLocationClientOption mLocationOption;
     private LocationSource.OnLocationChangedListener mListener;
     private AMapLocation mMapLocation;
+    private MarkerOptions markerOption;
+    private Marker marker;
 
 
     private Handler mHandler = new Handler(){
@@ -85,12 +90,13 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     serverText.setText(mess);
                     if(mess.startsWith("**,101")) {
 
+                        break;
                     }
-                    break;
             }
 
         }
     };
+
 
     private TextView serverText;
     private String[] titles = new String[] { "one", "two", "three", "four" };
@@ -139,6 +145,18 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         super.onDestroy();
         mMapView.onDestroy();
         mLocationClient.onDestroy();
+    }
+    /**
+     * 在地图上添加marker
+     */
+    private void addMarkersToMap(LatLng latLng) {
+
+        markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
+                .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                .position(latLng)
+                .draggable(true);
+        marker = aMap.addMarker(markerOption);
+        marker.showInfoWindow();
     }
 
     private void initView(){
@@ -371,7 +389,10 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
             case R.id.get_location:
                 if(mMapLocation != null && mListener !=null){
                     mListener.onLocationChanged(mMapLocation);
+                    LatLng matLng[] = {new LatLng(288.55737,302.57974)};
+                    addMarkersToMap(matLng[0]);
                     aMap.animateCamera(CameraUpdateFactory.zoomTo(17));
+                    aMap.clear();
                 }else{
                     showTip("定位失败");
                 }
