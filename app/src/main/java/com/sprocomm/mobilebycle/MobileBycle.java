@@ -91,7 +91,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     final String mess = (String) msg.obj;
                     serverText.setText(mess);
                     if(mess.startsWith("**,101")) {
-
+                        addMarkersToMap();
                         break;
                     }
             }
@@ -101,7 +101,6 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
 
 
     private TextView serverText;
-    private String[] titles = new String[] { "one", "two", "three", "four" };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -395,7 +394,6 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 if(mMapLocation != null && mListener !=null){
                     mListener.onLocationChanged(mMapLocation);
                     aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mMapLocation.getLatitude(),mMapLocation.getLongitude()),17));
-                    addMarkersToMap();
                 }else{
                     showTip("定位失败");
                 }
