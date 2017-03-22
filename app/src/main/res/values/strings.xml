@@ -8,7 +8,7 @@
     <string name="find">找车</string>
     <string name="change_server">更改服务器</string>
     <string name="change_gps_echo_time_gap">更改GPS回报时间间隔</string>
-    <string name="change_heart_beat_time_gap">更改心跳间隔时间</string>
+    <string name="change_heart_beat_time_gap">更改心跳时间间隔</string>
     <string name="change_gps_pre_time">更改GPS预开启时间</string>
     <string name="reset_device">重启设备</string>
     <string name="location">定位</string>
@@ -51,4 +51,11 @@
     <string name="missing_required_permission">You have disabled a required permission.</string>
     <string name="permission_change">Since the permissions change, please re-select the file.</string>
     <string name="permission_change_redo">Since the permissions change, please redo.</string>
+    <string name="reg_ok">注册</string>
+    <string name="ping_req">"心跳</string>
+    <string name="local">定位</string>
+    <string name="lock">锁车</string>
+    <string name="vibrate">倾斜</string>
+    <string name="relock">补锁信息</string>
+    <string name="lock_state">锁状态</string>
 </resources>

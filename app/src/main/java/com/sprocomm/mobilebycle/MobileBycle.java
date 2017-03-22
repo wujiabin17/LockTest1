@@ -61,6 +61,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private Button  btScan;
     private Button modifyTyrePerimeter;
     private TextView imei;
+    private TextView CMDText;
     private EditText inputImei;
     private Button connect;
     private double mLontitude;
@@ -89,7 +90,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     break;
                 case RECEIVE_FROM_SERVER:
                     final String mess = (String) msg.obj;
-                    serverText.setText(mess);
+                    echohdr(mess);
+                    //serverText.setText(mess);
                     if(mess.startsWith("**,101")) {
                         addMarkersToMap();
                         break;
@@ -102,6 +104,61 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
 
     private TextView serverText;
 
+    private void echohdr(String msg) {
+        if(msg != null && msg.length() >= 6) {
+            int index = msg.indexOf(',') + 1;
+            String tmp = msg.substring(index, index + 3);
+            int cmd = Integer.parseInt(tmp);
+            serverText.setText(msg.substring(0, msg.lastIndexOf('&')+1));
+            switch(cmd) {
+                case 999:
+                    CMDText.setText(R.string.reg_ok);
+                    break;
+                case 100:
+                    CMDText.setText(R.string.ping_req);
+                    break;
+                case 101:
+                    CMDText.setText(R.string.local);
+                    break;
+                case 102:
+                    CMDText.setText(R.string.lock);
+                    break;
+                case 103:
+                    CMDText.setText(R.string.unlock);
+                    break;
+                case 104:
+                    CMDText.setText(R.string.vibrate);
+                    break;
+                case 105:
+                    CMDText.setText(R.string.relock);
+                    break;
+                case 201:
+                    CMDText.setText(R.string.lock_state);
+                    break;
+                case 202:
+                    CMDText.setText(R.string.unlock);
+                    break;
+                case 203:
+                    CMDText.setText(R.string.find);
+                    break;
+                case 301:
+                    CMDText.setText(R.string.change_server);
+                    break;
+                case 304:
+                    CMDText.setText(R.string.change_gps_echo_time_gap);
+                    break;
+                case 307:
+                    CMDText.setText(R.string.change_heart_beat_time_gap);
+                    break;
+                case 308:
+                    CMDText.setText(R.string.change_gps_pre_time);
+                    break;
+                case 309:
+                    CMDText.setText(R.string.change_tyre_perimeter);
+                    break;
+            }
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -166,6 +223,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private void initView(){
         inputImei = (EditText)findViewById(R.id.put_imei);
         imei = (TextView)findViewById(R.id.imei);
+        CMDText = (TextView) findViewById(R.id.cmd_title);
         serverText = (TextView)findViewById(R.id.server_text);
         connect = (Button) findViewById(R.id.connect);
         disconnect = (Button)findViewById(R.id.disconnect);
@@ -182,10 +240,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         mMapView = (MapView) findViewById(R.id.map);
         btScan = (Button)findViewById(R.id.scan);
         imei.setText(R.string.default_imei);
-        imei.setTextSize(20);
         connect.setOnClickListener(this);
         disconnect.setOnClickListener(this);
-        imei.setOnClickListener(this);
         btGetLocation.setOnClickListener(this);
         unLock.setOnClickListener(this);
         findBike.setOnClickListener(this);
@@ -340,7 +396,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         SharedPreferences pfs = getSharedPreferences(getPackageName(), MODE_PRIVATE);
 
         switch(v.getId()){
-            case R.id.imei:
+            /*case R.id.imei:
                 if(inputImei.isShown()){
                     if(inputImei.getText().length() == 15){
                         imei.setText(inputImei.getText());
@@ -353,6 +409,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     inputImei.setVisibility(View.VISIBLE);
                     inputImei.setHint(R.string.hint_input_imei);
                 }
+                break;*/
             case R.id.connect:
                 connect();
                 break;
@@ -397,7 +454,6 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 }else{
                     showTip("定位失败");
                 }
-                Log.d("wjb ---","-mLatitude:" + mLatitude +" mLontitude:" + mLontitude);
                 break;
             case R.id.settings:
                 startActivity(new Intent(this, Settings.class));
@@ -489,7 +545,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     if(returnBycleId.length() == 15){
                         imei.setText(returnBycleId);
                         send("##"+ imei.getText() + ",202&&");
-                        showTip("");
+                        showTip("开锁成功");
                     }else{
                         showTip("验证码错误,请重新扫码");
                     }
