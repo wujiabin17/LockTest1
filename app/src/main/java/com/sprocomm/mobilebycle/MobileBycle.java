@@ -80,6 +80,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private MarkerOptions markerOption;
     private Marker marker;
     private LatLng matLng = new LatLng(31.208158,121.628941);
+    private boolean errorToast = false;
 
 
     private Handler mHandler = new Handler(){
@@ -336,6 +337,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 if(out != null) {
                     out.write(msg.getBytes());
                     out.flush();
+                    errorToast = false;
                     return;
                 } else {
                     Log.i("simon", "output stream null");
@@ -345,6 +347,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
             }
         }
         showErrorConnectToast();
+        errorToast = true;
     }
 
     private void connect() {
@@ -542,10 +545,12 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 }
                 String returnBycleId = data.getStringExtra(RETURN_BYCLE_ID);
                 if(returnBycleId !=null) {
-                    if(returnBycleId.length() == 15){
+                    if(returnBycleId.length() == 15 ){
                         imei.setText(returnBycleId);
                         send("##"+ imei.getText() + ",202&&");
-                        showTip("开锁成功");
+                        if(!errorToast){
+                            showTip("开锁成功");
+                        }
                     }else{
                         showTip("验证码错误,请重新扫码");
                     }
