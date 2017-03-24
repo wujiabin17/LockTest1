@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Point;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -37,6 +38,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -79,8 +81,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private AMapLocation mMapLocation;
     private MarkerOptions markerOption;
     private Marker marker;
-    private LatLng matLng = new LatLng(31.208158,121.628941);
-    private boolean errorToast = false;
+    private SharedPreferences mPfs;
 
 
     private Handler mHandler = new Handler(){
@@ -93,8 +94,19 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     final String mess = (String) msg.obj;
                     echohdr(mess);
                     //serverText.setText(mess);
+                    Log.i("simon", "AAAAAAAAAAA: " + mess);
                     if(mess.startsWith("**,101")) {
-                        addMarkersToMap();
+                        addMarkersToMap(mess);
+                        break;
+                    }
+                    if(mess.startsWith("**,202")){
+                        int index = mess.indexOf(",") +1;
+                        String isLock = mess.substring(index,mess.indexOf("&")+1);
+                        if(isLock.equalsIgnoreCase("0")){
+                            showTip("开锁失败,请检查imei是否正确");
+                        }else{
+                            showTip("开锁成功");
+                        }
                         break;
                     }
             }
@@ -161,11 +173,15 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         }
     }
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)  {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.mobile_bycle_layout);
+        mPfs = getSharedPreferences(getPackageName(), MODE_PRIVATE);
         initView();
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && RequestPermissionsActivity.startPermissionActivity(this)) {
+//            return;
+//        }
         mMapView.onCreate(savedInstanceState);
     }
 
@@ -177,9 +193,6 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     @Override
     protected void onResume() {
         super.onResume();
-        if (RequestPermissionsActivity.startPermissionActivity(this)) {
-            return;
-        }
         mMapView.onResume();
     }
 
@@ -208,17 +221,34 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         mMapView.onDestroy();
         mLocationClient.onDestroy();
     }
+
+    private LatLng parseLatLng(String source){
+        LatLng latLng = null;
+        int fixLen = "**,101,A,YYMMDDHHMMSS,".length();
+        //String comeServer = "**,101,A,160512140659,31.208258,121.629941&&";
+        if(source.length() > fixLen) {
+            String tmp = source.substring(fixLen);
+            Log.i("simmon","---------------:"+ tmp);
+            int index = tmp.indexOf(',');
+            int index2 = tmp.indexOf('&');
+            double longitude = Double.parseDouble(tmp.substring(0, index-1));
+            double latgitude = Double.parseDouble(tmp.substring(index+1, index2-1));
+            latLng = new LatLng(latgitude, longitude);
+        }
+        return latLng;
+    }
     /**
      * 在地图上添加marker
      */
-    private void addMarkersToMap() {
+    private void addMarkersToMap(String source) {
+        LatLng latLng = parseLatLng(source);
         markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
                 .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
-                .position(matLng)
+                .position(latLng)
                 .visible(true)
                 .draggable(true);
         marker = aMap.addMarker(markerOption);
-        marker.showInfoWindow();
+        aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latLng.latitude,latLng.longitude),17));
     }
 
     private void initView(){
@@ -240,7 +270,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         Button btGetLocation = (Button) findViewById(R.id.get_location);
         mMapView = (MapView) findViewById(R.id.map);
         btScan = (Button)findViewById(R.id.scan);
-        imei.setText(R.string.default_imei);
+        imei.setText(mPfs.getString(Settings.IMEI, getString(R.string.default_imei)));
         connect.setOnClickListener(this);
         disconnect.setOnClickListener(this);
         btGetLocation.setOnClickListener(this);
@@ -314,17 +344,20 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 if(in != null){
                     byte[] buffer = new byte[1024];
                     int count = in.read(buffer);
-                    if(count == 0){
+                    if(count == 0) {
                         return;
                     }
                     String bufferToString = new String(buffer);
                     String realMessage = bufferToString.substring(0, count);
+                    Log.d("wjb sprocomm","realMessage:" + realMessage);
                     Message message = mHandler.obtainMessage();
                     message.obj = realMessage;
                     message.what = RECEIVE_FROM_SERVER;
                     mHandler.sendMessage(message);
                 }
             } catch (IOException e) {
+                e.printStackTrace();
+            }catch (Exception e){
                 e.printStackTrace();
             }
         }
@@ -337,7 +370,6 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 if(out != null) {
                     out.write(msg.getBytes());
                     out.flush();
-                    errorToast = false;
                     return;
                 } else {
                     Log.i("simon", "output stream null");
@@ -347,16 +379,14 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
             }
         }
         showErrorConnectToast();
-        errorToast = true;
     }
 
     private void connect() {
 
         buttonState(STATE_CONNECTING);
 
-        SharedPreferences pfs = getSharedPreferences(getPackageName(), MODE_PRIVATE);
-        final  String ip = pfs.getString(Settings.IP, Settings.DEFAULT_IP);
-        final int port = pfs.getInt(Settings.PORT, Settings.DEFAULT_PORT);
+        final  String ip = mPfs.getString(Settings.IP, Settings.DEFAULT_IP);
+        final int port = mPfs.getInt(Settings.PORT, Settings.DEFAULT_PORT);
 
         Thread thread = new Thread(){
             @Override
@@ -545,12 +575,13 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 }
                 String returnBycleId = data.getStringExtra(RETURN_BYCLE_ID);
                 if(returnBycleId !=null) {
+                    imei.setText(mPfs.getString(Settings.IMEI, getString(R.string.default_imei)));
                     if(returnBycleId.length() == 15 ){
                         imei.setText(returnBycleId);
+                        SharedPreferences.Editor editor  = mPfs.edit();
+                        editor.putString(Settings.IMEI,returnBycleId);
+                        editor.commit();
                         send("##"+ imei.getText() + ",202&&");
-                        if(!errorToast){
-                            showTip("开锁成功");
-                        }
                     }else{
                         showTip("验证码错误,请重新扫码");
                     }

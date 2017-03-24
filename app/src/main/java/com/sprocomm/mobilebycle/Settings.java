@@ -36,6 +36,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
     public static final int DEFAULT_HEART_BEAT_GAP = 480;
     public static final String TYRE_PERIMETER = "tyre_perimeter";
     public static final int DEFAULT_TYRE_PERIMETER = 2100;
+    public static final String IMEI = "bike_id";
 
     private Button mSaveButton;
     private EditText mIPEdit;
