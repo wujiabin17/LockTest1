@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Point;
+import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,6 +22,8 @@ import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
 import com.amap.api.location.AMapLocationClientOption;
 import com.amap.api.location.AMapLocationListener;
+import com.amap.api.location.CoordinateConverter;
+import com.amap.api.location.DPoint;
 import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
@@ -30,6 +33,7 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
 import com.sprocomm.permissions.RequestPermissionsActivity;
+import com.sprocomm.utils.CoordinateUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +45,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import static com.sprocomm.mobilebycle.R.string.location;
 
 
 public class MobileBycle extends Activity implements OnClickListener, LocationSource, AMapLocationListener {
@@ -60,7 +66,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private Button modifyGpsPreTime;
     private Button rebootDevice;
     private Button mSettingsButton;
-    private Button  btScan;
+    private Button btScan;
     private Button modifyTyrePerimeter;
     private TextView imei;
     private TextView CMDText;
@@ -84,9 +90,9 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private SharedPreferences mPfs;
 
 
-    private Handler mHandler = new Handler(){
+    private Handler mHandler = new Handler() {
         public void handleMessage(android.os.Message msg) {
-            switch(msg.what){
+            switch (msg.what) {
                 case BUTTON_STATE:
                     buttonState(STATE_CONNECTED);
                     break;
@@ -95,16 +101,16 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                     echohdr(mess);
                     //serverText.setText(mess);
                     Log.i("simon", "AAAAAAAAAAA: " + mess);
-                    if(mess.startsWith("**,101")) {
+                    if (mess.startsWith("**,101")) {
                         addMarkersToMap(mess);
                         break;
                     }
-                    if(mess.startsWith("**,202")){
-                        int index = mess.indexOf(",") +1;
-                        String isLock = mess.substring(index,mess.indexOf("&")+1);
-                        if(isLock.equalsIgnoreCase("0")){
+                    if (mess.startsWith("**,202")) {
+                        int index = mess.indexOf(",") + 1;
+                        String isLock = mess.substring(index, mess.indexOf("&") + 1);
+                        if (isLock.equalsIgnoreCase("0")) {
                             showTip("开锁失败,请检查imei是否正确");
-                        }else{
+                        } else {
                             showTip("开锁成功");
                         }
                         break;
@@ -118,12 +124,12 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private TextView serverText;
 
     private void echohdr(String msg) {
-        if(msg != null && msg.length() >= 6) {
+        if (msg != null && msg.length() >= 6) {
             int index = msg.indexOf(',') + 1;
             String tmp = msg.substring(index, index + 3);
             int cmd = Integer.parseInt(tmp);
-            serverText.setText(msg.substring(0, msg.lastIndexOf('&')+1));
-            switch(cmd) {
+            serverText.setText(msg.substring(0, msg.lastIndexOf('&') + 1));
+            switch (cmd) {
                 case 999:
                     CMDText.setText(R.string.reg_ok);
                     break;
@@ -172,8 +178,9 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
             }
         }
     }
+
     @Override
-    protected void onCreate(Bundle savedInstanceState)  {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.mobile_bycle_layout);
@@ -201,6 +208,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         super.onPause();
         mMapView.onPause();
     }
+
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -222,54 +230,69 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         mLocationClient.onDestroy();
     }
 
-    private LatLng parseLatLng(String source){
+    private LatLng parseLatLng(String source) {
         LatLng latLng = null;
         int fixLen = "**,101,A,YYMMDDHHMMSS,".length();
         //String comeServer = "**,101,A,160512140659,31.208258,121.629941&&";
-        if(source.length() > fixLen) {
+        if (source.length() > fixLen) {
             String tmp = source.substring(fixLen);
-            Log.i("simmon","---------------:"+ tmp);
+            Log.i("simmon", "---------------:" + tmp);
             int index = tmp.indexOf(',');
             int index2 = tmp.indexOf('&');
-            double longitude = Double.parseDouble(tmp.substring(0, index-1));
-            double latgitude = Double.parseDouble(tmp.substring(index+1, index2-1));
+            double longitude = Double.parseDouble(tmp.substring(0, index - 1));
+            double latgitude = Double.parseDouble(tmp.substring(index + 1, index2 - 1));
             latLng = new LatLng(latgitude, longitude);
         }
         return latLng;
     }
+
+    /**
+     *
+     * @param sourceLatLng:
+     * @return
+     */
+
+    public LatLng fromGpsToAmap( LatLng sourceLatLng) {
+        LatLng latLng = new LatLng(sourceLatLng.latitude, sourceLatLng.longitude);
+        latLng = CoordinateUtil.transformFromWGSToGCJ(latLng);
+        return latLng;
+    }
+
     /**
      * 在地图上添加marker
      */
     private void addMarkersToMap(String source) {
         LatLng latLng = parseLatLng(source);
+        latLng = fromGpsToAmap(latLng);
+        Log.i("simon","--------------latlng:" + latLng);
         markerOption = new MarkerOptions().icon(BitmapDescriptorFactory
                 .defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
                 .position(latLng)
                 .visible(true)
                 .draggable(true);
         marker = aMap.addMarker(markerOption);
-        aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latLng.latitude,latLng.longitude),17));
+        aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17));
     }
 
-    private void initView(){
-        inputImei = (EditText)findViewById(R.id.put_imei);
-        imei = (TextView)findViewById(R.id.imei);
+    private void initView() {
+        inputImei = (EditText) findViewById(R.id.put_imei);
+        imei = (TextView) findViewById(R.id.imei);
         CMDText = (TextView) findViewById(R.id.cmd_title);
-        serverText = (TextView)findViewById(R.id.server_text);
+        serverText = (TextView) findViewById(R.id.server_text);
         connect = (Button) findViewById(R.id.connect);
-        disconnect = (Button)findViewById(R.id.disconnect);
-        unLock = (Button)findViewById(R.id.unlocking);
-        findBike = (Button)findViewById(R.id.find_bike);
-        modifyServer = (Button)findViewById(R.id.modify_server_data);
-        modifyGpsTime = (Button)findViewById(R.id.modify_gps);
-        modifyInterval = (Button)findViewById(R.id.modify_interval);
-        modifyGpsPreTime =(Button)findViewById(R.id.modify_start_gps_time);
+        disconnect = (Button) findViewById(R.id.disconnect);
+        unLock = (Button) findViewById(R.id.unlocking);
+        findBike = (Button) findViewById(R.id.find_bike);
+        modifyServer = (Button) findViewById(R.id.modify_server_data);
+        modifyGpsTime = (Button) findViewById(R.id.modify_gps);
+        modifyInterval = (Button) findViewById(R.id.modify_interval);
+        modifyGpsPreTime = (Button) findViewById(R.id.modify_start_gps_time);
         rebootDevice = (Button) findViewById(R.id.reboot_device);
         mSettingsButton = (Button) findViewById(R.id.settings);
-        modifyTyrePerimeter= (Button) findViewById(R.id.modify_tyre_perimeter);
+        modifyTyrePerimeter = (Button) findViewById(R.id.modify_tyre_perimeter);
         Button btGetLocation = (Button) findViewById(R.id.get_location);
         mMapView = (MapView) findViewById(R.id.map);
-        btScan = (Button)findViewById(R.id.scan);
+        btScan = (Button) findViewById(R.id.scan);
         imei.setText(mPfs.getString(Settings.IMEI, getString(R.string.default_imei)));
         connect.setOnClickListener(this);
         disconnect.setOnClickListener(this);
@@ -293,11 +316,11 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         aMap.setMyLocationEnabled(true);
         // 设置定位的类型为定位模式，有定位、跟随或地图根据面向方向旋转几种
         aMap.setMyLocationType(AMap.LOCATION_TYPE_LOCATE);
-        mToast = Toast.makeText(this,"", Toast.LENGTH_SHORT);
+        mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
     }
 
-    public void buttonState(int state){
-        switch(state) {
+    public void buttonState(int state) {
+        switch (state) {
             case STATE_CONNECTED:
                 disconnect.setEnabled(true);
                 connect.setEnabled(false);
@@ -309,7 +332,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 modifyGpsPreTime.setEnabled(true);
                 rebootDevice.setEnabled(true);
                 modifyTyrePerimeter.setEnabled(true);
-                send("##"+ imei.getText() + ",999&&");
+                send("##" + imei.getText() + ",999&&");
                 break;
             case STATE_CONNECTING:
                 disconnect.setEnabled(false);
@@ -337,19 +360,20 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 break;
         }
     }
-    private void receiveMsg(){
-        if(mSocket != null){
+
+    private void receiveMsg() {
+        if (mSocket != null) {
             try {
                 InputStream in = mSocket.getInputStream();
-                if(in != null){
+                if (in != null) {
                     byte[] buffer = new byte[1024];
                     int count = in.read(buffer);
-                    if(count == 0) {
+                    if (count == 0) {
                         return;
                     }
                     String bufferToString = new String(buffer);
                     String realMessage = bufferToString.substring(0, count);
-                    Log.d("wjb sprocomm","realMessage:" + realMessage);
+                    Log.d("wjb sprocomm", "realMessage:" + realMessage);
                     Message message = mHandler.obtainMessage();
                     message.obj = realMessage;
                     message.what = RECEIVE_FROM_SERVER;
@@ -357,17 +381,17 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-            }catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
     private void send(String msg) {
-        if(mSocket != null) {
+        if (mSocket != null) {
             try {
                 OutputStream out = mSocket.getOutputStream();
-                if(out != null) {
+                if (out != null) {
                     out.write(msg.getBytes());
                     out.flush();
                     return;
@@ -385,21 +409,21 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
 
         buttonState(STATE_CONNECTING);
 
-        final  String ip = mPfs.getString(Settings.IP, Settings.DEFAULT_IP);
+        final String ip = mPfs.getString(Settings.IP, Settings.DEFAULT_IP);
         final int port = mPfs.getInt(Settings.PORT, Settings.DEFAULT_PORT);
 
-        Thread thread = new Thread(){
+        Thread thread = new Thread() {
             @Override
             public void run() {
                 try {
                     mSocket = new Socket(InetAddress.getByName(ip), port);
-                    if(mSocket.isConnected()) {
+                    if (mSocket.isConnected()) {
                         mHandler.sendEmptyMessage(BUTTON_STATE);
-                        while(true){
+                        while (true) {
                             receiveMsg();
                         }
                     }
-                }catch (UnknownHostException e) {
+                } catch (UnknownHostException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -409,8 +433,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         thread.start();
     }
 
-    private void disconnect(){
-        if(mSocket != null) {
+    private void disconnect() {
+        if (mSocket != null) {
             try {
                 send("##CLOSE");
                 mSocket.shutdownOutput();
@@ -428,7 +452,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
 
         SharedPreferences pfs = getSharedPreferences(getPackageName(), MODE_PRIVATE);
 
-        switch(v.getId()){
+        switch (v.getId()) {
             /*case R.id.imei:
                 if(inputImei.isShown()){
                     if(inputImei.getText().length() == 15){
@@ -450,41 +474,41 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 disconnect();
                 break;
             case R.id.unlocking:
-                send("##"+ imei.getText() + ",202&&");
+                send("##" + imei.getText() + ",202&&");
                 break;
             case R.id.find_bike:
-                send("##"+ imei.getText() + ",203&&");
+                send("##" + imei.getText() + ",203&&");
                 break;
             case R.id.modify_server_data:
                 final String ip = pfs.getString(Settings.IP, Settings.DEFAULT_IP);
                 final int port = pfs.getInt(Settings.PORT, Settings.DEFAULT_PORT);
-                send("##"+ imei.getText() + ",301," + ip + "," + port + "&&");
+                send("##" + imei.getText() + ",301," + ip + "," + port + "&&");
                 break;
             case R.id.modify_gps:
                 final int lockSecond = pfs.getInt(Settings.GPS_ECHO_GAP_LOCK, Settings.DEFAULT_GPS_ECHO_GAP_LOCK);
                 final int runSecond = pfs.getInt(Settings.GPS_ECHO_GAP_RUN, Settings.DEFAULT_GPS_ECHO_GAP_RUN);
-                send("##"+ imei.getText() + ",304,"+lockSecond + "," + runSecond + "&&");
+                send("##" + imei.getText() + ",304," + lockSecond + "," + runSecond + "&&");
                 break;
             case R.id.modify_interval:
                 final int interval = pfs.getInt(Settings.HEART_BEAT_GAP, Settings.DEFAULT_HEART_BEAT_GAP);
-                send("##"+ imei.getText() + ",307," + interval + "&&");
+                send("##" + imei.getText() + ",307," + interval + "&&");
                 break;
             case R.id.modify_start_gps_time:
                 final int gpsPreTime = pfs.getInt(Settings.GPS_PRE_TIME, Settings.DEFAULT_GPS_PRE_TIME);
-                send("##"+ imei.getText() + ",308," + gpsPreTime + "&&");
+                send("##" + imei.getText() + ",308," + gpsPreTime + "&&");
                 break;
             case R.id.modify_tyre_perimeter:
                 final int tyrePerimeter = pfs.getInt(Settings.TYRE_PERIMETER, Settings.DEFAULT_TYRE_PERIMETER);
-                send("##"+ imei.getText() + ",309," + tyrePerimeter + "&&");
+                send("##" + imei.getText() + ",309," + tyrePerimeter + "&&");
                 break;
             case R.id.reboot_device:
-                send("##"+ imei.getText() + ",900&&");
+                send("##" + imei.getText() + ",900&&");
                 break;
             case R.id.get_location:
-                if(mMapLocation != null && mListener !=null){
+                if (mMapLocation != null && mListener != null) {
                     mListener.onLocationChanged(mMapLocation);
-                    aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mMapLocation.getLatitude(),mMapLocation.getLongitude()),17));
-                }else{
+                    aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mMapLocation.getLatitude(), mMapLocation.getLongitude()), 17));
+                } else {
                     showTip("定位失败");
                 }
                 break;
@@ -492,19 +516,20 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 startActivity(new Intent(this, Settings.class));
                 break;
             case R.id.scan:
-                startActivityForResult(new Intent(this,CaptureActivity.class),RESULT_FROM_CAPTURE_ACTIVITY);
+                startActivityForResult(new Intent(this, CaptureActivity.class), RESULT_FROM_CAPTURE_ACTIVITY);
                 break;
             default:
                 break;
         }
     }
+
     private void showTip(final String str) {
         mToast.setText(str);
         mToast.show();
     }
 
-    private void showErrorConnectToast(){
-        Toast.makeText(this, R.string.no_connect_to_server,Toast.LENGTH_SHORT).show();
+    private void showErrorConnectToast() {
+        Toast.makeText(this, R.string.no_connect_to_server, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -555,10 +580,10 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
                 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 Date date = new Date(amapLocation.getTime());
                 df.format(date);//定位时间
-                Log.d("wjb sprocomm","amapLocation:" + amapLocation);
-            }else {
+                Log.d("simon", "amapLocation:" + amapLocation.getLatitude() + "," + amapLocation.getLongitude());
+            } else {
                 //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
-                Log.e("AmapError","location Error, ErrCode:"
+                Log.e("AmapError", "location Error, ErrCode:"
                         + amapLocation.getErrorCode() + ", errInfo:"
                         + amapLocation.getErrorInfo());
             }
@@ -568,21 +593,21 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch(requestCode){
+        switch (requestCode) {
             case RESULT_FROM_CAPTURE_ACTIVITY:
-                if(data ==null){
+                if (data == null) {
                     return;
                 }
                 String returnBycleId = data.getStringExtra(RETURN_BYCLE_ID);
-                if(returnBycleId !=null) {
+                if (returnBycleId != null) {
                     imei.setText(mPfs.getString(Settings.IMEI, getString(R.string.default_imei)));
-                    if(returnBycleId.length() == 15 ){
+                    if (returnBycleId.length() == 15) {
                         imei.setText(returnBycleId);
-                        SharedPreferences.Editor editor  = mPfs.edit();
-                        editor.putString(Settings.IMEI,returnBycleId);
+                        SharedPreferences.Editor editor = mPfs.edit();
+                        editor.putString(Settings.IMEI, returnBycleId);
                         editor.commit();
-                        send("##"+ imei.getText() + ",202&&");
-                    }else{
+                        send("##" + imei.getText() + ",202&&");
+                    } else {
                         showTip("验证码错误,请重新扫码");
                     }
                 }
