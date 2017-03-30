@@ -3,7 +3,7 @@ package com.sprocomm.utils;
 import com.amap.api.maps.model.LatLng;
 
 /**
- * Created by sunzhongfang on 2017/3/24.
+ * Created by wujiabin on 2017/3/24.
  */
 
 public class CoordinateUtil {

@@ -1,9 +1,15 @@
 package com.sprocomm.mobilebycle;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.Point;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,8 +19,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
+import android.view.animation.Animation;
+import android.view.animation.Interpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,10 +37,15 @@ import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
+import com.amap.api.maps.UiSettings;
 import com.amap.api.maps.model.BitmapDescriptorFactory;
+import com.amap.api.maps.model.CameraPosition;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.Marker;
 import com.amap.api.maps.model.MarkerOptions;
+import com.amap.api.maps.model.MyLocationStyle;
+import com.amap.api.maps.model.animation.RotateAnimation;
+import com.amap.api.maps.model.animation.TranslateAnimation;
 import com.sprocomm.permissions.RequestPermissionsActivity;
 import com.sprocomm.utils.CoordinateUtil;
 
@@ -122,6 +136,7 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
 
 
     private TextView serverText;
+    private UiSettings mUiSettings;
 
     private void echohdr(String msg) {
         if (msg != null && msg.length() >= 6) {
@@ -273,6 +288,16 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         marker = aMap.addMarker(markerOption);
         aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17));
     }
+    Marker screenMarker = null;
+
+    private void addMarkerInScreenCenter() {
+        LatLng latLng = aMap.getCameraPosition().target;
+        Point screenPosition = aMap.getProjection().toScreenLocation(latLng);
+        screenMarker = aMap.addMarker(new MarkerOptions()
+                .anchor(0.5f,0.5f)
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.purple_pin)));
+        screenMarker.setPositionByPixels(screenPosition.x,screenPosition.y);
+    }
 
     private void initView() {
         inputImei = (EditText) findViewById(R.id.put_imei);
@@ -310,13 +335,39 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
         //初始化地图控制器对象
         aMap = mMapView.getMap();
         aMap.setMapType(AMap.MAP_TYPE_NORMAL);
+        MyLocationStyle myLocationStyle = new MyLocationStyle();
+        myLocationStyle.myLocationIcon(BitmapDescriptorFactory
+                .fromResource(R.mipmap.gps_point));// 设置小蓝点的图标
+        myLocationStyle.strokeColor(Color.argb(0, 0, 0, 0));// 设置圆形的边框颜色
+        myLocationStyle.radiusFillColor(Color.argb(0, 0, 0, 0));// 设置圆形的填充颜色
+        myLocationStyle.strokeWidth(0f);// 设置圆形的边框粗细
+        aMap.setMyLocationStyle(myLocationStyle);
+        aMap.getUiSettings().setMyLocationButtonEnabled(true);
         // 设置定位监听
         aMap.setLocationSource(this);
         // 设置为true表示显示定位层并可触发定位，false表示隐藏定位层并不可触发定位，默认是false
         aMap.setMyLocationEnabled(true);
         // 设置定位的类型为定位模式，有定位、跟随或地图根据面向方向旋转几种
-        aMap.setMyLocationType(AMap.LOCATION_TYPE_LOCATE);
+        mUiSettings = aMap.getUiSettings();
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+        aMap.setOnMapLoadedListener(new AMap.OnMapLoadedListener() {
+            @Override
+            public void onMapLoaded() {
+                addMarkerInScreenCenter();
+            }
+        });
+        // 设置可视范围变化时的回调的接口方法
+        aMap.setOnCameraChangeListener(new AMap.OnCameraChangeListener() {
+            @Override
+            public void onCameraChange(CameraPosition position) {
+            }
+            @Override
+            public void onCameraChangeFinish(CameraPosition postion) {
+                //屏幕中心的Marker跳动
+                startJumpAnimation();
+                receiveMsg();
+            }
+        });
     }
 
     public void buttonState(int state) {
@@ -589,6 +640,49 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
             }
         }
     }
+    /**
+     * 屏幕中心marker 跳动
+     */
+    public void startJumpAnimation() {
+
+        if (screenMarker != null ) {
+            //根据屏幕距离计算需要移动的目标点
+            final LatLng latLng = screenMarker.getPosition();
+            Point point =  aMap.getProjection().toScreenLocation(latLng);
+            point.y -= dip2px(this,125);
+            LatLng target = aMap.getProjection()
+                    .fromScreenLocation(point);
+            //使用TranslateAnimation,填写一个需要移动的目标点
+            TranslateAnimation animation = new TranslateAnimation(target);
+            animation.setInterpolator(new Interpolator() {
+                @Override
+                public float getInterpolation(float input) {
+                    // 模拟重加速度的interpolator
+                    if(input <= 0.5) {
+                        return (float) (0.5f - 2 * (0.5 - input) * (0.5 - input));
+                    } else {
+                        return (float) (0.5f - Math.sqrt((input - 0.5f)*(1.5f - input)));
+                    }
+                }
+            });
+            //整个移动所需要的时间
+            animation.setDuration(600);
+            //设置动画
+            screenMarker.setAnimation(animation);
+            //开始动画
+            screenMarker.startAnimation();
+
+        } else {
+            Log.e("ama","screenMarker is null");
+        }
+    }
+
+    //dip和px转换
+    private static int dip2px(Context context, float dpValue) {
+        final float scale = context.getResources().getDisplayMetrics().density;
+        return (int) (dpValue * scale + 0.5f);
+    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
