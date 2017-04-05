@@ -23,9 +23,9 @@ import java.util.regex.Pattern;
 public class Settings extends Activity implements View.OnClickListener, TextWatcher {
 
     public static final String IP = "ip";
-    public static final String DEFAULT_IP = "112.64.126.122";
+    public static final String DEFAULT_IP = "211.137.168.9";
     public static final String PORT = "port";
-    public static final int DEFAULT_PORT = 7088;
+    public static final int DEFAULT_PORT = 1011;
     public static final String GPS_ECHO_GAP_RUN = "gps_echo_gap_run";
     public static final int DEFAULT_GPS_ECHO_GAP_RUN = 45;
     public static final String GPS_ECHO_GAP_LOCK = "gps_echo_gap_lock";

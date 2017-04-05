@@ -72,6 +72,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
     private static final int STATE_DISCONNECTED = 3;
     private static final int RESULT_FROM_CAPTURE_ACTIVITY = 1;
     private static final String RETURN_BYCLE_ID = "return_bycle_id";
+    private static final String CONNECT_IP = "112.64.126.122";
+    private static final int CONNECT_PORT = 7088;
     private Button unLock;
     private Button findBike;
     private Button modifyServer;
@@ -460,8 +462,8 @@ public class MobileBycle extends Activity implements OnClickListener, LocationSo
 
         buttonState(STATE_CONNECTING);
 
-        final String ip = mPfs.getString(Settings.IP, Settings.DEFAULT_IP);
-        final int port = mPfs.getInt(Settings.PORT, Settings.DEFAULT_PORT);
+        final String ip = CONNECT_IP;
+        final int port = CONNECT_PORT;
 
         Thread thread = new Thread() {
             @Override
