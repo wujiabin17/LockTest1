@@ -60,6 +60,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
 
     private void initView(){
         SharedPreferences spfs = getSharedPreferences(getPackageName(), MODE_PRIVATE);
+        mEditor = spfs.edit();
         mSaveButton = (Button) findViewById(R.id.save);
         mSaveButton.setOnClickListener(this);
 
@@ -108,6 +109,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
                 if(isGoodIp(ip)) {
                     Log.i("simon", "good ip addr");
                     mEditor.putString(IP, ip);
+                    mIPEdit.setHint(ip);
                 }
             }
 
@@ -116,6 +118,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
                 final int port = Integer.parseInt(portstr);
                 Log.i("simon", "port = " + port);
                 mEditor.putInt(PORT, port);
+                mPortEdit.setHint("" + port);
             }
 
             if(mGPSEchoTimeEditLock.getText().length() > 0) {
@@ -130,6 +133,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
                 final int gap = Integer.parseInt(str);
                 Log.i("simon", "run gps echo gap = " + gap);
                 mEditor.putInt(GPS_ECHO_GAP_RUN, gap);
+                mGPSEchoTimeEditRun.setHint(""+gap);
             }
 
             if(mHeartBeatGapEdit.getText().length() > 0) {
@@ -137,6 +141,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
                 final int gap = Integer.parseInt(str);
                 Log.i("simon", "heart beat gap = " + gap);
                 mEditor.putInt(HEART_BEAT_GAP, gap);
+                mHeartBeatGapEdit.setHint("" + gap);
             }
 
             if(mGPSPreTimeEdit.getText().length() > 0) {
@@ -144,6 +149,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
                 final int preTime = Integer.parseInt(str);
                 Log.i("simon", "gps pre time = " + preTime);
                 mEditor.putInt(GPS_PRE_TIME, preTime);
+                mGPSPreTimeEdit.setHint("" + preTime);
             }
 
             if(mTyrePerimeterEdit.getText().length() > 0) {
@@ -151,6 +157,7 @@ public class Settings extends Activity implements View.OnClickListener, TextWatc
                 final int tyrePerimeter = Integer.parseInt(str);
                 Log.i("simon", "Tyre Perimeter = " + tyrePerimeter);
                 mEditor.putInt(GPS_PRE_TIME, tyrePerimeter);
+                mTyrePerimeterEdit.setHint("" + tyrePerimeter);
             }
 
             mEditor.commit();
